@@ -1,5 +1,10 @@
 import { Routes } from '@angular/router';
 import { LoginComponent } from './login/login.component';
+import { provideStore } from '@ngrx/store';
+import { metaReducers, reducers } from './reducers';
+import { provideEffects } from '@ngrx/effects';
+import { SunriseEffects } from './dashboard/home/effects/home.effects';
+import { sunriseReducer } from './reducers/home.reducer';
 
 export const routes: Routes = [
     {

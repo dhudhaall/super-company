@@ -1,31 +1,33 @@
-import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { SuperService } from '../../super.service';
-import { ActivatedRoute, Router } from '@angular/router';
+import { AfterViewInit, Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
+import { Store, select } from '@ngrx/store';
+import { AppState } from './state/home.state';
+import * as HomeActions from '../home/actions/home.actions';
+import * as HomeSelectors from '../home/selectors/home.selector';
+import { SuperService } from '../../super.service';
+import { map } from 'rxjs';
 
 @Component({
   selector: 'app-home',
   templateUrl: './home.component.html',
-  styleUrl: './home.component.scss',
+  styleUrls: ['./home.component.scss'],
 })
 export class HomeComponent implements OnInit {
-
-  catFact: any = {}
+  catFact: any = {};
   sunriseSunsetData: any;
-
-  latitude: string = '';
-  longitude: string = '';
-  date: string = '';
-
-  showError: boolean = false
+  showError: boolean = false;
   sunriseForm!: FormGroup;
+
+  getHomeData$ = this.store.select(HomeSelectors.selectSunriseData);
+  getHomeError$ = this.store.select(HomeSelectors.selectSunriseError);
 
   constructor(
     private service: SuperService,
     private fb: FormBuilder,
     private route: ActivatedRoute,
-    private router: Router
+    private router: Router,
+    private store: Store<AppState>
   ) {
     this.sunriseForm = fb.group({
       latitude: ['', [Validators.required]],
@@ -35,28 +37,17 @@ export class HomeComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.route.queryParams.subscribe((params) => {
-      if (params && Object.values(params).length > 0) {
-        this.sunriseForm.patchValue({
-          latitude: params['latitude'] || '',
-          longitude: params['longitude'] || '',
-          date: params['date'] || '',
-        });
-        this.getSunriseSunsetData();
-      } else {
-        const storedParamsString = localStorage.getItem('sunrise');
-        const storedParams = JSON.parse(storedParamsString!);
-        if (storedParams && Object.values(storedParams).length > 0) {
-          console.log
-          this.sunriseForm.patchValue({
-            latitude: storedParams['latitude'] || '',
-            longitude: storedParams['longitude'] || '',
-            date: storedParams['date'] || '',
-          });
-          this.getSunriseSunsetData();
-        }
-      }
+    this.store
+    .pipe(select(HomeSelectors.selectSunriseData))
+    .pipe(map((items) => items?.results))
+    .subscribe((response) => {
+      this.sunriseSunsetData = response;
     });
+
+  let params = JSON.parse(localStorage.getItem('sunrise')!) || this.route.snapshot.queryParams
+  this.sunriseForm.patchValue(params);
+
+  this.getSunriseSunsetData();
     this.getCatFact();
   }
 
@@ -66,43 +57,35 @@ export class HomeComponent implements OnInit {
     });
   }
 
-  setQueryParamsAndGetData(latitude: string, longitude: string, date: string) {
-    const queryParams = { latitude, longitude, date };
-    localStorage.setItem('sunrise', JSON.stringify(queryParams));
-
-    this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams,
-      queryParamsHandling: 'merge'
-    });
+  submit() {
+    this.showError = true;
   }
 
-  submit() {
-    this.showError = true
+  getQueryParams() {
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: this.sunriseForm.value,
+      queryParamsHandling: 'merge',
+    });
+
+    localStorage.setItem('sunrise', JSON.stringify(this.sunriseForm.value))
   }
 
   getSunriseSunsetData() {
     if (this.sunriseForm.valid) {
-      this.service
-        .getSunriseSunset(
-          this.sunriseForm.value.latitude,
-          this.sunriseForm.value.longitude,
-          this.sunriseForm.value.date
-        )
-        .subscribe(
-          (response: any) => {
-            this.sunriseSunsetData = response.results;
-            this.setQueryParamsAndGetData(this.sunriseForm.value.latitude, this.sunriseForm.value.longitude, this.sunriseForm.value.date);
-          },
-          (error) => {
-            console.error('Error fetching sunrise-sunset data', error);
-          }
-        );
+      this.store.dispatch(
+        HomeActions.loadSunriseData({
+          latitude: this.sunriseForm.value.latitude,
+          longitude: this.sunriseForm.value.longitude,
+          date: this.sunriseForm.value.date,
+        })
+      );
+
+      this.getQueryParams();
     }
   }
 
   update() {
     this.getCatFact();
   }
-
 }

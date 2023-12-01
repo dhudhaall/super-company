@@ -6,8 +6,11 @@ import { HomeComponent } from './home/home.component';
 import { ContactComponent } from './contact/contact.component';
 import { HeaderComponent } from './header/header.component';
 import { FooterComponent } from './footer/footer.component';
-import { SuperService } from '../super.service';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { StoreModule } from '@ngrx/store';
+import { sunriseReducer } from '../reducers/home.reducer';
+import { EffectsModule } from '@ngrx/effects';
+import { SunriseEffects } from './home/effects/home.effects';
 
 @NgModule({
   declarations: [
